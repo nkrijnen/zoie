@@ -18,6 +18,7 @@ package proj.zoie.impl.indexing.internal;
 
 import it.unimi.dsi.fastutil.longs.LongSet;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
@@ -252,6 +253,32 @@ public class DiskLuceneIndexDataLoader<R extends IndexReader> extends LuceneInde
 	  return 0;
 	}
 	
+	public void exportSnapshot(File directory) throws IOException
+	{
+	  DiskSearchIndex<R> idx = (DiskSearchIndex<R>)getSearchIndex();
+	  if(idx != null)
+	  {
+	    DiskIndexSnapshot snapshot = null;
+        
+	    try
+	    {
+	      synchronized(_optimizeMonitor) // prevent index updates while taking a snapshot
+	      {
+	        snapshot = idx.getSnapshot();
+	      }
+	      
+	      if(snapshot != null) 
+	      {
+	        snapshot.writeTo(directory);
+	      }
+	    }
+	    finally
+	    {
+	      if(snapshot != null) snapshot.close();
+	    }
+	  }
+	}
+	
 	public void importSnapshot(ReadableByteChannel channel) throws IOException
 	{
       DiskSearchIndex<R> idx = (DiskSearchIndex<R>)getSearchIndex();
@@ -261,6 +288,20 @@ public class DiskLuceneIndexDataLoader<R extends IndexReader> extends LuceneInde
         {
 	      _idxMgr.purgeIndex();
 	      idx.importSnapshot(channel);
+	      _idxMgr.refreshDiskReader();
+	    }
+	  }
+	}
+	
+	public void importSnapshot(File directory) throws IOException
+	{
+      DiskSearchIndex<R> idx = (DiskSearchIndex<R>)getSearchIndex();
+      if(idx != null)
+      {
+        synchronized(_optimizeMonitor) // prevent index updates while importing a snapshot
+        {
+	      _idxMgr.purgeIndex();
+	      idx.importSnapshot(directory);
 	      _idxMgr.refreshDiskReader();
 	    }
 	  }

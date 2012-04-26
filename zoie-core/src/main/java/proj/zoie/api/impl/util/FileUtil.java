@@ -16,7 +16,11 @@ package proj.zoie.api.impl.util;
  * limitations under the License.
  */
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public class FileUtil {
 	/**
@@ -72,5 +76,34 @@ public class FileUtil {
     {
       return location.length();
     }
+	}
+	
+	public static void copyFile(File src, File dst) throws IOException 
+	{
+	  InputStream in = null;
+	  OutputStream out = null;
+	  try
+	  {
+		in = new FileInputStream(src);
+	    out = new FileOutputStream(dst);
+
+	    byte[] buf = new byte[4096];
+        int len;
+	    while ((len = in.read(buf)) > 0) 
+	    {
+	      out.write(buf, 0, len);
+	    }
+	  }
+	  finally
+	  {
+	    if (in != null)
+	    {
+		  in.close();
+	    }
+		if (out != null)
+		{
+	      out.close();   
+		}
+	  }
 	}
 }

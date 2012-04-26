@@ -17,6 +17,7 @@ package proj.zoie.impl.indexing.internal;
  */
 import it.unimi.dsi.fastutil.longs.LongSet;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.concurrent.TimeoutException;
@@ -287,5 +288,10 @@ public class DiskSearchIndex<R extends IndexReader> extends BaseSearchIndex<R>{
   public void importSnapshot(ReadableByteChannel channel) throws IOException
   {
     DiskIndexSnapshot.readSnapshot(channel, _dirMgr);
+  }
+  
+  public void importSnapshot(File directory) throws IOException
+  {
+    DiskIndexSnapshot.readSnapshot(directory, _dirMgr);
   }
 }

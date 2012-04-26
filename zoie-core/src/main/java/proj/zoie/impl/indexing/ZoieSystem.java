@@ -815,6 +815,16 @@ public boolean alreadyShutdown()
     _diskLoader.importSnapshot(channel);
   }
 
+  public void exportSnapshot(File directory) throws IOException
+  {
+    _diskLoader.exportSnapshot(directory);
+  }
+	
+  public void importSnapshot(File directory) throws IOException
+  {
+    _diskLoader.importSnapshot(directory);
+  }
+
   public ZoieSystemAdminMBean getAdminMBean()
   {
     return new MyZoieSystemAdmin();

@@ -17,14 +17,17 @@ package proj.zoie.impl.indexing.internal;
  * limitations under the License.
  */
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collection;
 
+import proj.zoie.api.DefaultDirectoryManager;
 import proj.zoie.api.DirectoryManager;
 import proj.zoie.api.impl.util.ChannelUtil;
+import proj.zoie.api.impl.util.FileUtil;
 import proj.zoie.impl.indexing.internal.ZoieIndexDeletionPolicy.Snapshot;
 
 /**
@@ -83,6 +86,31 @@ public class DiskIndexSnapshot
     return amount;
   }
   
+  public void writeTo(File directory) throws IOException
+  {
+    if(!directory.exists()) 
+    {
+      directory.mkdirs();
+    }
+	else if (!directory.isDirectory()) 
+    {
+      throw new IOException("bad snapshot directory " + directory);
+    }
+    
+    String indexPath = _dirMgr.getPath();
+    
+    // Save index.directory file
+    DefaultDirectoryManager.saveSignature(_sig, new File(directory, 
+      DirectoryManager.INDEX_DIRECTORY));
+    
+    // Copy index files
+    Collection<String> fileNames = _snapshot.getFileNames();
+    for(String fileName : fileNames)
+    {
+      FileUtil.copyFile(new File(indexPath, fileName), new File(directory, fileName));
+    }
+  }
+  
   public static void readSnapshot(ReadableByteChannel channel, DirectoryManager dirMgr) throws IOException
   {
     // format version
@@ -116,5 +144,23 @@ public class DiskIndexSnapshot
         throw new IOException("bad snapshot file");
       }
     }
+  }
+  
+  public static void readSnapshot(File directory, DirectoryManager dirMgr) throws IOException
+  {
+    if(!directory.isDirectory() || !directory.exists())
+    {
+    	throw new IOException("bad snapshot directory " + directory);
+    }
+	  
+	File files[] = directory.listFiles();
+	File destinationDirectory = new File(dirMgr.getPath());
+	
+	destinationDirectory.mkdirs();
+	
+	for (File file : files)
+	{
+		FileUtil.copyFile(file, new File(destinationDirectory, file.getName()));
+	}
   }
 }
