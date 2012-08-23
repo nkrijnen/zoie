@@ -1,8 +1,11 @@
 package proj.zoie.hourglass.impl;
 
 import java.io.IOException;
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
@@ -17,6 +20,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.store.Directory;
 
+import proj.zoie.api.DefaultDirectoryManager;
 import proj.zoie.api.DirectoryManager;
 import proj.zoie.api.DocIDMapper;
 import proj.zoie.api.Zoie;
@@ -46,15 +50,38 @@ public class Hourglass<R extends IndexReader, D> implements Zoie<R, D>
   private long _freshness = 1000;
   final HourGlassScheduler _scheduler;
   public volatile long SLA = 4; // getIndexReaders should return in 4ms or a warning is logged
-  public Hourglass(HourglassDirectoryManagerFactory dirMgrFactory, ZoieIndexableInterpreter<D> interpreter, IndexReaderDecorator<R> readerDecorator,ZoieConfig zoieConfig, HourglassListener<R, D> hourglassListener)
+  
+  @SuppressWarnings("rawtypes")
+  public Hourglass(HourglassDirectoryManagerFactory dirMgrFactory, ZoieIndexableInterpreter<D> interpreter, IndexReaderDecorator<R> readerDecorator,ZoieConfig zoieConfig, List<HourglassListener> hourglassListeners)
   {
     _zConfig = zoieConfig;
-    _dirMgrFactory = dirMgrFactory;
+    _dirMgrFactory = dirMgrFactory;      
+      if (hourglassListeners == null) {
+        hourglassListeners = Collections.EMPTY_LIST;
+      }
+    
     _scheduler = _dirMgrFactory.getScheduler();
     _dirMgrFactory.clearRecentlyChanged();
     _interpreter = interpreter;
     _decorator = readerDecorator;
-    _readerMgr = new HourglassReaderManager<R, D>(this, _dirMgrFactory, _decorator, loadArchives(), hourglassListener);
+    List<ZoieIndexReader<R>> archives;
+    List<ZoieSystem<R, D>> archiveZoies;
+    if (_dirMgrFactory.getScheduler().isAppendOnly())
+    {
+      archives = loadArchives();
+      archiveZoies = Collections.EMPTY_LIST;
+    }
+    else
+    {
+      archives = Collections.EMPTY_LIST;
+      archiveZoies = loadArchiveZoies();
+    }
+    _readerMgr = new HourglassReaderManager<R, D>(this,
+                                                  _dirMgrFactory,
+                                                  _decorator,
+                                                  archives,
+                                                  archiveZoies,
+                                                  hourglassListeners);
     _currentVersion = _dirMgrFactory.getArchivedVersion();
     _currentZoie = _readerMgr.retireAndNew(null);
     _currentZoie.start();
@@ -62,8 +89,36 @@ public class Hourglass<R extends IndexReader, D> implements Zoie<R, D>
     log.info("start Hourglass at version: " + _currentVersion);
   }
   public Hourglass(HourglassDirectoryManagerFactory dirMgrFactory, ZoieIndexableInterpreter<D> interpreter, IndexReaderDecorator<R> readerDecorator,ZoieConfig zoieConfig) {
-    this(dirMgrFactory, interpreter, readerDecorator, zoieConfig, null);
+    this(dirMgrFactory, interpreter, readerDecorator, zoieConfig, Collections.EMPTY_LIST);
   }
+  public Hourglass(HourglassDirectoryManagerFactory dirMgrFactory, ZoieIndexableInterpreter<D> interpreter, IndexReaderDecorator<R> readerDecorator,ZoieConfig zoieConfig, HourglassListener hourglassListener) {
+    this(dirMgrFactory, interpreter, readerDecorator, zoieConfig, Arrays.asList(hourglassListener));
+  }
+
+  protected List<ZoieSystem<R, D>> loadArchiveZoies()
+  {
+    List<ZoieSystem<R, D>> archives = new ArrayList<ZoieSystem<R, D>>();
+    long t0 = System.currentTimeMillis();
+    List<File> dirs = _dirMgrFactory.getAllArchivedDirs();
+    for(File dir : dirs)
+    {
+      IndexReader reader;
+      try
+      {
+        DirectoryManager dirMgr = new DefaultDirectoryManager(dir, _dirMgrFactory.getMode());
+        ZoieSystem<R, D> zoie = new ZoieSystem<R, D>(dirMgr, _interpreter, _decorator, _zConfig);
+        zoie.start();
+        archives.add(zoie);
+      }
+      catch (Exception e)
+      {
+        log.error("Load index: " + dir + " failed.", e);
+      }
+    }
+    log.info("load "+dirs.size()+" archived indices of " + getSizeBytes() +" bytes in " + (System.currentTimeMillis() - t0) + "ms");
+    return archives;
+  }
+
   protected List<ZoieIndexReader<R>> loadArchives()
   {
     List<ZoieIndexReader<R>> archives = new ArrayList<ZoieIndexReader<R>>();
@@ -131,7 +186,7 @@ public class Hourglass<R extends IndexReader, D> implements Zoie<R, D>
   {
     long t0 = System.currentTimeMillis();
     try
-    {
+    {      
       _shutdownLock.readLock().lock();
       if (_isShutdown)
       {
@@ -219,6 +274,26 @@ public class Hourglass<R extends IndexReader, D> implements Zoie<R, D>
     }
   }
 
+  private void clearFromArchives(Collection<DataEvent<D>> data) throws ZoieException
+  {
+    if (_dirMgrFactory.getScheduler().isAppendOnly())
+      return;
+
+    if (data != null && data.size() > 0)
+    {
+      List<DataEvent<D>> deletes = new ArrayList<DataEvent<D>>(data.size());
+      for (DataEvent<D> event : data)
+      {
+        if (event instanceof MarkerDataEvent) continue;
+        deletes.add(new DataEvent<D>(event.getData(), event.getVersion(), true));
+      }
+      for (ZoieSystem<R, D> zoie : _readerMgr.getArchiveZoies())
+      {
+        zoie.consume(deletes);
+      }
+    }
+  }
+
   /* (non-Javadoc)
    * @see proj.zoie.api.DataConsumer#consume(java.util.Collection)
    */
@@ -241,12 +316,14 @@ public class Hourglass<R extends IndexReader, D> implements Zoie<R, D>
         // use new dir for zoie and the old one will be archive.
         if (!_dirMgrFactory.updateDirectoryManager())
         {
+          clearFromArchives(data);
           _currentZoie.consume(data);
         } else
         {
           // new time period
           _currentZoie = _readerMgr.retireAndNew(_currentZoie);
           _currentZoie.start();
+          clearFromArchives(data);
           _currentZoie.consume(data);
         }
       } finally
@@ -263,19 +340,20 @@ public class Hourglass<R extends IndexReader, D> implements Zoie<R, D>
   {
     try
     {
-      _shutdownLock.writeLock().lock();
+      _shutdownLock.writeLock().lock();      
       if (_isShutdown)
       {
         log.info("system already shut down");
         return;
       }
-      _isShutdown = true;
+      _isShutdown = true;      
     } finally
     {
       _shutdownLock.writeLock().unlock();
     }
     clearCachedReaders();
     _readerMgr.shutdown();
+    
     log.info("shut down complete.");
   }
 

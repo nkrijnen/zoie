@@ -33,7 +33,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Similarity;
@@ -169,33 +168,37 @@ public abstract class LuceneIndexDataLoader<R extends IndexReader> implements Da
     		    long uid = indexable.getUID();
     		    delSet.add(uid);
     		    addList.remove(uid);
-				if (!indexable.isDeleted()) // update event
+				if (!(indexable.isDeleted() || evt.isDelete())) // update event
 				{
-					IndexingReq[] reqs = indexable.buildIndexingReqs();
-					for (IndexingReq req : reqs) {
-						if (req != null) // if doc is provided, interpret as
-											// a delete, e.g. update with
-											// nothing
-						{
-							Document doc = req.getDocument();
-							if (doc!=null){							 
-							  ZoieSegmentReader.fillDocumentID(doc, uid);
-							  if (indexable.isStorable()){
-							    byte[] bytes = indexable.getStoreValue();
-							    if (bytes!=null){
-							      doc.add(new Field(AbstractZoieIndexable.DOCUMENT_STORE_FIELD,bytes));
-							    }
-							  }
-							}
-							// add to the insert list
-							List<IndexingReq> docList = addList.get(uid);
-							if (docList == null) {
-								docList = new LinkedList<IndexingReq>();
-								addList.put(uid, docList);
-							}
-							docList.add(req);
-						}
-					}
+					try {
+  				  IndexingReq[] reqs = indexable.buildIndexingReqs();
+  					for (IndexingReq req : reqs) {
+  						if (req != null) // if doc is provided, interpret as
+  											// a delete, e.g. update with
+  											// nothing
+  						{
+  							Document doc = req.getDocument();
+  							if (doc!=null){							 
+  							  ZoieSegmentReader.fillDocumentID(doc, uid);
+  							  if (indexable.isStorable()){
+  							    byte[] bytes = indexable.getStoreValue();
+  							    if (bytes!=null){
+  							      doc.add(new Field(AbstractZoieIndexable.DOCUMENT_STORE_FIELD,bytes));
+  							    }
+  							  }
+  							}
+  							// add to the insert list
+  							List<IndexingReq> docList = addList.get(uid);
+  							if (docList == null) {
+  								docList = new LinkedList<IndexingReq>();
+  								addList.put(uid, docList);
+  							}
+  							docList.add(req);
+  						}
+  					}
+  				} catch (Exception ex) {
+  				  log.error("Couldn't index the event with uid - " + uid, ex);
+  				}
 				}
 				// hao: we do not need the following few lines
 				//else {
@@ -246,7 +249,8 @@ public abstract class LuceneIndexDataLoader<R extends IndexReader> implements Da
         BaseSearchIndex<R> idx = getSearchIndex();
         //hao: merge the realyOnly ram idx with the disk idx
         idx.loadFromIndex(ramIndex);
-        idx.clearDeletes(); // clear old deletes as deletes are written to the lucene index
+//      duplicate clearDeletes, delDoc may change for realtime delete after loadFromIndex()
+//        idx.clearDeletes(); // clear old deletes as deletes are written to the lucene index
         // hao: update the disk idx reader
         idx.refresh(); // load the index reader
         purgeDocuments();

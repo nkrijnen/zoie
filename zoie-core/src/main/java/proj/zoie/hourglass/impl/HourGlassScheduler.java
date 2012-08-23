@@ -3,6 +3,7 @@ package proj.zoie.hourglass.impl;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Random;
 
 import org.apache.log4j.Logger;
 
@@ -11,8 +12,9 @@ public class HourGlassScheduler
   public static final Logger log = Logger.getLogger(HourGlassScheduler.class.getName());
   private String _schedule;
   private final FREQUENCY _freq;
-  private int[] _params = new int[3];
+  private int[] _params = new int[6];
   private int _trimThreshold = Integer.MAX_VALUE;
+  private boolean _appendOnly = true;
   private static ThreadLocal<SimpleDateFormat> dateFormatter = new ThreadLocal<SimpleDateFormat>()
   {
     @Override
@@ -29,7 +31,8 @@ public class HourGlassScheduler
   }
   public HourGlassScheduler(FREQUENCY freq, String schedule)
   {
-    // format "ss mm hh"
+    // format "ss mm hh [ss mm hh]"
+    // We will pick a time schedule randomly between the first and second schedules.
     _schedule = schedule;
     _freq = freq;
     String [] param = _schedule.split(" ");
@@ -37,11 +40,52 @@ public class HourGlassScheduler
     {
       _params[i] = parseParam(param[i]);
     }
+
+    int size = _params.length / 2;
+    if (param.length <= size)
+    {
+      // We have only one schedule.
+      for (int i = 0; i < size; ++i)
+      {
+        _params[size + i] = _params[i];
+      }
+    }
+
     log.info("schedule: " + Arrays.toString(_params) + " frequenty: " + _freq);
+
+    if (param.length > size)
+    {
+      // We have a start and an end.
+      int start = _params[0] + (_params[1] * 60) + (_params[2] * 3600);
+      int end = _params[3] + (_params[4] * 60) + (_params[5] * 3600);
+      int gap = end - start;
+      if (gap < 0) gap = gap + 86400 /* one day */;
+      if (gap != 0)
+      {
+        start += new Random().nextInt(gap);
+        start %= 86400 /* one day */;
+        _params[0] = start % 60;
+        _params[1] = (start % 3600) / 60;
+        _params[2] = start / 3600;
+      }
+    }
+
+    log.info("schedule final: " + Arrays.toString(_params) + " frequenty: " + _freq);
   }
   public HourGlassScheduler(FREQUENCY freq, String schedule, int trimThreshold)
   {
     this(freq, schedule);
+    _trimThreshold = trimThreshold;
+    log.info("schedule: " + Arrays.toString(_params) + " frequenty: " + _freq + " trimThreshold: keep last " + _trimThreshold + " rolling periods");
+  }
+  public HourGlassScheduler(FREQUENCY freq, String schedule, boolean appendOnly)
+  {
+    this(freq, schedule);
+    _appendOnly = appendOnly;
+  }
+  public HourGlassScheduler(FREQUENCY freq, String schedule, boolean appendOnly, int trimThreshold)
+  {
+    this(freq, schedule, appendOnly);
     _trimThreshold = trimThreshold;
     log.info("schedule: " + Arrays.toString(_params) + " frequenty: " + _freq + " trimThreshold: keep last " + _trimThreshold + " rolling periods");
   }
@@ -65,6 +109,10 @@ public class HourGlassScheduler
   public int getTrimThreshold()
   {
     return _trimThreshold;
+  }
+  public boolean isAppendOnly()
+  {
+    return _appendOnly;
   }
   protected Calendar getNextRoll()
   {
