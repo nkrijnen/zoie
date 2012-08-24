@@ -17,13 +17,14 @@
 
 	<groupId>com.linkedin.zoie</groupId>
 	<artifactId>zoie-parent</artifactId>
-	<version>3.2.1-SNAPSHOT</version>
+	<version>3.3.0</version>
 	<packaging>pom</packaging>
 
 	<name>zoie parent</name>
 
 	<description>
   	</description>
+	<url>http://github.com/linkedin/zoie</url>
 
 	<parent>
 		<groupId>org.sonatype.oss</groupId>
@@ -31,10 +32,7 @@
 		<version>6</version>
 	</parent>
 
-
 	<inceptionYear>2007</inceptionYear>
-
-	<url>http://javasoze.github.com/zoie</url>
 
 	<licenses>
 		<license>
@@ -46,14 +44,6 @@
 
 	<developers>
 		<developer>
-			<name>John Wang</name>
-			<id>javasoze</id>
-			<email>john.wang@gmail.com</email>
-			<roles>
-				<role>committer</role>
-			</roles>
-		</developer>
-		<developer>
 			<name>Lei Wang</name>
 			<id>wonlay</id>
 			<email>wonlay@gmail.com</email>
@@ -62,40 +52,100 @@
 			</roles>
 		</developer>
 	</developers>
+	<repositories>
+	    <repository>
+	      <id>jbossReleases</id>
+	      <name>Jboss Released Java Packages</name>
+	      <url>http://repository.jboss.org/nexus/content/groups/public/</url>
+	      <layout>default</layout>
+	    </repository>
+	</repositories>
 
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>junit</groupId>
-				<artifactId>junit</artifactId>
-				<version>4.5</version>
-				<scope>test</scope>
-			</dependency>
-			<dependency>
-				<groupId>log4j</groupId>
-				<artifactId>log4j</artifactId>
-				<version>1.2.13</version>
-				<exclusions>
-					<exclusion>
-						<groupId>javax.mail</groupId>
-						<artifactId>mail</artifactId>
-					</exclusion>
-					<exclusion>
-						<groupId>javax.jms</groupId>
-						<artifactId>jms</artifactId>
-					</exclusion>
-					<exclusion>
-						<groupId>com.sun.jdmk</groupId>
-						<artifactId>jmxtools</artifactId>
-					</exclusion>
-					<exclusion>
-						<groupId>com.sun.jmx</groupId>
-						<artifactId>jmxri</artifactId>
-					</exclusion>
-				</exclusions>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>javax.jms</groupId>
+                <artifactId>jms</artifactId>
+                <version>1.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-all</artifactId>
+                <version>1.8.1</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-core</artifactId>
+                <version>3.0.5.RELEASE</version>
+            </dependency>    
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-web</artifactId>
+                <version>3.0.5.RELEASE</version>
+            </dependency>    
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-webmvc</artifactId>
+                <version>3.0.5.RELEASE</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.lucene</groupId>
+                <artifactId>lucene-core</artifactId>
+                <version>3.5.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.lucene</groupId>
+                <artifactId>lucene-highlighter</artifactId>
+                <version>3.0.2</version>
+            </dependency>
+            <dependency>
+                <groupId>it.unimi.dsi</groupId>
+                <artifactId>fastutil</artifactId>
+                <version>6.4.3</version>
+            </dependency>
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>4.5</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.directwebremoting</groupId>
+                <artifactId>dwr</artifactId>
+                <version>3.0.M1</version>
+            </dependency>
+            <dependency>
+                <groupId>javax.servlet</groupId>
+                <artifactId>servlet-api</artifactId>
+                <version>2.5</version>
+                <scope>compile</scope>
+            </dependency>
+            <dependency>
+                <groupId>log4j</groupId>
+                <artifactId>log4j</artifactId>
+                <version>1.2.13</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>javax.mail</groupId>
+                        <artifactId>mail</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.jms</groupId>
+                        <artifactId>jms</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.sun.jdmk</groupId>
+                        <artifactId>jmxtools</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.sun.jmx</groupId>
+                        <artifactId>jmxri</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 	<properties>
 		<maven.compile.source>1.6</maven.compile.source>
