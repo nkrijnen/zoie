@@ -297,18 +297,6 @@ public class ZoieSegmentReader<R extends IndexReader> extends ZoieIndexReader<R>
 	}
 	
 	@Override
-	public TermPositions termPositions(Term term) throws IOException {
-		ensureOpen();
-		  TermPositions tp = in.termPositions(term);
-	      if(_noDedup) return tp;
-	      
-	      int[] delDocIds = _delDocIds;//.get();
-	      if(tp == null || delDocIds == null || delDocIds.length == 0) return tp;
-	      
-	      return new ZoieSegmentTermPositions(tp, new ArrayDocIdSet(delDocIds));
-	}
-
-	@Override
 	public TermPositions termPositions() throws IOException
 	{
 	  ensureOpen();
@@ -335,10 +323,6 @@ public class ZoieSegmentReader<R extends IndexReader> extends ZoieIndexReader<R>
 		
 	}
 
-	@Override
-	public void decRef() throws IOException {
-		// not synchronized, since it doesn't do anything anyway
-	}
    @Override
   public int numDocs() {
      if (_currentDelDocIds != null) {

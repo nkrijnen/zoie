@@ -2,13 +2,12 @@ package proj.zoie.api.impl.util;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.IndexReader.FieldOption;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.queryParser.ParseException;
 import org.apache.lucene.queryParser.QueryParser;
 import org.apache.lucene.search.Explanation;
@@ -67,9 +66,15 @@ public class SearchUtil
         DocIDMapper idmapper = reader.getDocIDMaper();
         try
         {
-          Collection fieldnames = reader.getFieldNames(FieldOption.ALL);
-          String fieldnamess = Arrays.toString(fieldnames.toArray());
-          retstr += "fields: " + fieldnamess + "\n";
+          retstr += "fields: [";
+          Iterator<FieldInfo> fieldInfos = reader.getFieldInfos().iterator();
+          while (fieldInfos.hasNext()) {
+            retstr += fieldInfos.next().name;
+            if (fieldInfos.hasNext()) {
+              retstr += ",";
+            }
+          }
+          retstr += "]\n";
           searcher = new IndexSearcher(reader);
           TopDocs hits = searcher.search(q, 10);
           String docs = "";

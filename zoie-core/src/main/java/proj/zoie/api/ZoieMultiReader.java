@@ -271,22 +271,12 @@ public class ZoieMultiReader<R extends IndexReader> extends ZoieIndexReader<R>
 	 * (non-Javadoc)
 	 * @see org.apache.lucene.index.IndexReader#incRef()
 	 */
-	@Override
-	public synchronized void incRef()
-	{
-    super.incRef();
-  }
 
 	/*
 	 * This code will be JIT optimized since it doesn't return anything.
 	 * (non-Javadoc)
 	 * @see org.apache.lucene.index.IndexReader#decRef()
 	 */
-	@Override
-  public synchronized void decRef() throws IOException
-  {
-    super.decRef();
-  }
 
 	@Override
 	public ZoieIndexReader<R> reopen(boolean openReadOnly)
